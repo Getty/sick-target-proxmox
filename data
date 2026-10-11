@@ -1,0 +1,20 @@
+---
+claimed_at: 2026-10-11T05:51:17Z
+claimed_by: hub-main
+class: standard
+completed: 2026-10-11T05:51:17Z
+created: 2026-10-11T05:34:06Z
+id: 6
+priority: medium
+started: 2026-10-11T05:50:55Z
+status: done
+tags:
+- core
+- coordination
+title: 'Cards on the board of ../sick: image, chapter 5, contrib, HQ checklist, k56'
+updated: 2026-10-11T05:51:17Z
+---
+
+File on ../sick (no edits there): install this dist + deps in docker/Dockerfile; switch chapter 5 and contrib/devices/proxmox/ from the hooks to the new types; HQ checklist entry; k56 gets the maintainer decision of 2026-10-11.
+
+Filed on ../sick: #62 image, #63 chapter 5 + contrib (+ stand-in disagreements), #64 HQ checklist, #65 root to targets, #66 default port; k56 noted with the decision.
