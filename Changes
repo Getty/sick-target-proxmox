@@ -2,3 +2,19 @@ Revision history for SICK-Target-Proxmox
 
 {{$NEXT}}
     - Initial release
+    - Device types proxmox-ve (SICK::Target::ProxmoxVE) and proxmox-bs
+      (SICK::Target::ProxmoxBS): certificate, chain and key are uploaded
+      through the node's own API (POST /api2/json/nodes/<node>/certificates/
+      custom); the API token is read from a file and sent only in the
+      request header.
+    - The connection to the node is always verified, against the ca files
+      and/or SHA-256 fingerprint pins of the device list only: no system
+      store, no proxy, no redirects, nothing in the environment can loosen
+      it. A node that fails the check gets no request.
+    - Key, certificate and leaf-first chain are checked before anything is
+      sent; the answer must name the uploaded certificate; error messages
+      never quote the token, the key or the body.
+    - Tests run against a Perl stand-in of both APIs, including checks that
+      the token does not leak. The device types ran against the stand-in
+      only; the APIs were observed on PBS 4.2.8 and PVE 9.2.21 in
+      containers.

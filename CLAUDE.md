@@ -52,6 +52,14 @@ node is trusted.
 
 ## Layout
 
-Nothing is built yet. One module per device type directly below `lib/SICK/Target/`
-(SICK finds a type there), `docs/api-notes.md` beside it. This section follows the code
-once it exists.
+- `lib/SICK/Target/ProxmoxVE.pm`, `ProxmoxBS.pm` - the two device types (SICK finds a
+  type among the `.pm` files directly below `SICK/Target/`).
+- `lib/SICK/Target/Proxmox/Role.pm` - options, validation and the order of `deploy`,
+  shared by both; `Proxmox/Client.pm` - the verified HTTPS connection (HTTP::Tiny on
+  IO::Socket::SSL, decision 2).
+- `t/lib/Test/SICK/Proxmox/StandIn.pm` - the stand-in of both APIs; its header maps
+  every behaviour to its entry in `docs/api-notes.md`. `PKI.pm` makes the test CAs.
+- `t/90-live.t` - the live test, skipped unless `SICK_PROXMOX_LIVE_*` is set (never set
+  it unasked).
+- `docs/api-notes.md`, `docs/decisions/`, `docs/real-node-trial.md`,
+  `docs/hq-checklist.md`.
