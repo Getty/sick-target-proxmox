@@ -1,0 +1,20 @@
+---
+claimed_at: 2026-10-11T05:50:21Z
+claimed_by: hub-main
+class: standard
+completed: 2026-10-11T05:50:21Z
+created: 2026-10-11T05:33:08Z
+id: 1
+priority: high
+started: 2026-10-11T05:47:05Z
+status: done
+tags:
+- docs
+- api
+title: 'API notes: certificate upload on PVE and PBS, each statement with its origin'
+updated: 2026-10-11T05:50:21Z
+---
+
+docs/api-notes.md: POST/DELETE /nodes/{node}/certificates/custom and GET .../certificates/info on PVE (8006) and PBS (8007): auth header, parameters and their types, answers and status codes, restart behaviour, what the node presents before (pve-ssl.pem of the cluster CA, PBS self-signed proxy.pem), privileges. Origin per entry: schema / source / stand-in / real node with version. Start from ../sick docs/findings/device-proxmox.md, re-check everything.
+
+commit b1f703c
