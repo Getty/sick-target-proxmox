@@ -50,10 +50,10 @@ certificate: it answers C<200>, keeps serving the old certificate and fails
 at its next start. This type therefore checks the pair before anything is
 sent, and SICK checks the port afterwards.
 
-B<Tried against:> the stand-in under F<t/> only; not tried on a real
-Proxmox Backup Server. Everything about the host itself was read in the
-sources and the API schema of Proxmox Backup Server 4.2 (F<docs/api-notes.md>),
-not observed.
+B<Tried against:> the stand-in under F<t/> (the unit suite), and end to end
+through C<sick run> against a real Proxmox Backup Server 4.2.8-1 in a
+container, with the lab CA (F<t/e2e/device-proxmox.sh>). Not tried: a host
+under systemd, a host across a real network (F<docs/hq-checklist.md>).
 
 =head1 OPTIONS
 
@@ -117,7 +117,9 @@ Server has fixed roles, and only C<Admin> holds it; on that path it also
 covers the ACME accounts and plugins, including the credentials of the DNS
 plugins. Narrow path, wide role on it.
 
-These commands were read in the sources and the manual, B<not run>:
+These commands were run on Proxmox Backup Server 4.2.8 in a container
+(F<docs/real-node-trial.md>), as written except that C<generate-token> ran
+without C<--expire> and C<--comment>:
 
     proxmox-backup-manager user create sick@pbs --comment 'SICK certificate upload'
     proxmox-backup-manager user generate-token sick@pbs sick --expire <epoch> --comment 'SICK'

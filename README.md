@@ -20,6 +20,8 @@ and goes into the request header only.
 - `docs/real-node-trial.md` - PBS 4.2.8 and PVE 9.2.21 observed in containers
 - `docs/hq-checklist.md` - what is left to try on real nodes
 
-Tried: the device types against the stand-in under `t/` only. The APIs were
-observed on PBS 4.2.8 and PVE 9.2.21 in containers (no systemd, no cluster);
-the device types themselves have not run against a real node yet.
+Tried: the unit suite against the stand-in under `t/`, and `sick run` with
+both device types end to end against a real PVE 9.2.21 API and a real PBS
+4.2.8 in containers, with the lab CA of SICK (`t/e2e/device-proxmox.sh`; no
+systemd, no cluster). Not tried: a node under systemd, a PVE cluster, a node
+across a real network (`docs/hq-checklist.md`).

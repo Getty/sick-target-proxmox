@@ -1,8 +1,11 @@
 # 4. The smallest right of the token, and the way back
 
 Status: decided 2026-10-11 by the session that built the distribution. Card #2.
-Every fact below is in `docs/api-notes.md` with its origin; the commands were
-read in the sources and manuals and **not run**.
+Every fact below is in `docs/api-notes.md` with its origin. The commands were
+read in the sources and manuals, then run as written on PVE 9.2.21 and PBS 4.2.8
+in containers (`docs/real-node-trial.md`; PBS `generate-token` without
+`--expire`/`--comment`) and by `t/e2e/device-proxmox.sh`; not yet on a node
+under systemd or in a cluster (`docs/hq-checklist.md`).
 
 ## Decision
 

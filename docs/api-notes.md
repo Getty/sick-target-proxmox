@@ -6,16 +6,19 @@ Code that depends on a behaviour of an API has that behaviour written down
 here first. Where the code and these notes disagree, the notes are right
 until a new observation is written into them.
 
-Every statement carries its origin:
+Every statement carries its origin. `[observed e2e]` marks what
+`t/e2e/device-proxmox.sh` saw on the same versions in containers, three runs
+of 2026-10-11, with the device types of this distribution as the client:
 
 | Tag | Meaning |
 |---|---|
 | `[schema]` | read in the API viewer schema (`apidoc.js`); version and date in "Sources read" |
 | `[source: repo file]` | read in the source code; commit and version of the repository in "Sources read" |
 | `[docs: repo file]` | read in the product documentation (also a source repository) |
-| `[stand-in]` | observed against our stand-in API. None yet. |
+| `[stand-in]` | observed against our stand-in API (`t/lib/Test/SICK/Proxmox/StandIn.pm`, which answers what these notes say; no entry relies on it alone) |
 | `[observed PBS 4.2.8]` | observed on a real PBS 4.2.8-1 in a container (below) |
 | `[observed PVE 9.2.21, container]` | observed on a real PVE 9.2.21 in a container (below); restart timings with the shim |
+| `[observed e2e]` | observed by `t/e2e/device-proxmox.sh` (PVE 9.2.21 with the shim, PBS 4.2.8-1, IO::Socket::SSL 2.089) |
 | `[derived]` | our conclusion from the statements it names; not read anywhere as such |
 
 Sources were read on 2026-10-11. Nothing from the cloned sources was
@@ -137,7 +140,8 @@ for a token secret and is never a real value.
   body, sent after a delay of 3 seconds
   `[source: pve-manager PVE/HTTPServer.pm auth_handler; pve-http-server
   AnyEvent.pm]`. Wrong secret: `HTTP/1.1 401 Authentication failed!`, empty
-  body, ~3 s `[observed PVE 9.2.21, container]`.
+  body, ~3 s `[observed PVE 9.2.21, container]`. The refused upload is a
+  line with status 401 in `/var/log/pveproxy/access.log` `[observed e2e]`.
 - No `Authorization` header and no cookie: `401 No ticket`, empty body,
   3 seconds delay `[source: same]`.
 - Missing privilege: status `403`, reason phrase
@@ -337,7 +341,9 @@ for a token secret and is never a real value.
   pve-manager pveproxy.pm]`: the **same** `pve-ssl.pem` as before the
   upload, same fingerprint, not regenerated `[observed PVE 9.2.21,
   container]`. Without `restart` nothing changes on 8006 until the next
-  restart `[observed PVE 9.2.21, container]`.
+  restart `[observed PVE 9.2.21, container]`. With `restart=1` old and
+  new certificate alternated until 5.7-6.1 s after the answer, in all
+  three runs `[observed e2e]`.
 
 ### What a fresh PVE node presents
 
@@ -521,7 +527,8 @@ for a token secret and is never a real value.
   ApiService::call]`. Wrong secret: `HTTP/1.1 401 Unauthorized`, body
   `authentication failed`, ~3 s, plus a `set-cookie` clearing
   `__Host-PBSAuthCookie` `[observed PBS 4.2.8]`. A missing header was not
-  tried.
+  tried. The refused upload is a line with status 401 in
+  `/var/log/proxmox-backup/api/access.log` `[observed e2e]`.
 - Missing privilege: status `403`, body the plain text
   `permission check failed` with content type `application/json`, sent
   0.5 seconds after the request started `[source: proxmox-rest-server

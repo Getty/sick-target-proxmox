@@ -48,9 +48,12 @@ list, and the token and the key go nowhere else (see L</HOW THE NODE IS
 TRUSTED>). What the API does, call by call and with the source of each
 statement, is in F<docs/api-notes.md> of the distribution.
 
-B<Tried against:> the stand-in under F<t/> only; not tried on a real
-Proxmox VE node. Everything about the node itself was read in the sources
-and the API schema of Proxmox VE 9.2 (F<docs/api-notes.md>), not observed.
+B<Tried against:> the stand-in under F<t/> (the unit suite), and end to end
+through C<sick run> against the real API of Proxmox VE 9.2.21 in a container,
+with the lab CA (F<t/e2e/device-proxmox.sh>). In that container C<pveproxy>
+is restarted through a C<systemctl> shim; there is no systemd and no
+cluster. Not tried: a node under systemd, a cluster, a node across a real
+network (F<docs/hq-checklist.md>).
 
 =head1 OPTIONS
 
@@ -131,7 +134,8 @@ built-in role C<Administrator> holds; a role of its own with nothing else is
 the smallest. It is still wide: on that node it also allows services,
 network, DNS, time, APT, firewall and ACME. One token per node.
 
-These commands were read in the sources and the manual, B<not run>:
+These commands were run as written on Proxmox VE 9.2.21 in a container
+(F<docs/real-node-trial.md>):
 
     pveum user add sick@pve --comment 'SICK certificate upload'
     pveum role add SICKCertificate --privs Sys.Modify

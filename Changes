@@ -15,6 +15,9 @@ Revision history for SICK-Target-Proxmox
       sent; the answer must name the uploaded certificate; error messages
       never quote the token, the key or the body.
     - Tests run against a Perl stand-in of both APIs, including checks that
-      the token does not leak. The device types ran against the stand-in
-      only; the APIs were observed on PBS 4.2.8 and PVE 9.2.21 in
-      containers.
+      the token does not leak.
+    - Both device types ran end to end through `sick run` against a real
+      PVE 9.2.21 API (pveproxy restarted through a systemctl shim, no
+      systemd, no cluster) and a real PBS 4.2.8-1, each in a container with
+      the lab CA (t/e2e/device-proxmox.sh). Not tried: under systemd, in a
+      cluster, across a real network.
