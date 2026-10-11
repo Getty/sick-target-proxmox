@@ -1,0 +1,32 @@
+---
+claimed_at: 2026-10-11T06:11:19Z
+claimed_by: sick-worker-proxmox
+class: standard
+completed: 2026-10-11T06:11:19Z
+created: 2026-10-11T05:33:32Z
+id: 3
+priority: high
+started: 2026-10-11T05:47:28Z
+status: done
+tags:
+- code
+- tests
+title: Device types proxmox-ve and proxmox-bs with stand-in and negative tests
+updated: 2026-10-11T06:11:19Z
+---
+
+lib/SICK/Target/ProxmoxVE.pm, ProxmoxBS.pm, shared role; t/ stand-in (no Docker) answering what docs/api-notes.md says. Negatives: unknown CA / wrong fingerprint (abort, stand-in saw no request with token), 401, 500, key does not match certificate (no request at all), port does not present the issued certificate, second run uploads nothing, token in no output, exception or command line.
+
+2026-10-11 05:51 Started: read notes, decisions 1-4, core (Target/Bundle/Runner/Config/Temp/OpenSSL/Command). Plan: Role + Client + ProxmoxVE/ProxmoxBS, Perl stand-in t/lib/Test/SICK/Proxmox/StandIn.pm (forked IO::Socket::SSL server), tests 00/10/20/30/40/50/90. Read in IO::Socket::SSL 2.099 source: a matching SSL_fingerprint at depth 0 overrides a failed hostname check (consistent with decision 1: pin names one certificate).
+
+2026-10-11 06:07 Built: SICK::Target::ProxmoxVE/ProxmoxBS, ::Proxmox::Role, ::Proxmox::Client; stand-in t/lib/Test/SICK/Proxmox/StandIn.pm (forked IO::Socket::SSL server, log never holds secret/key/body), PKI helper, tests 00/10/20/30/35/40/50/60/90. prove -lr t: 111 tests PASS against the stand-in only; 90-live skipped. dzil build + dzil test --author clean.
+
+2026-10-11 06:07 Orchestrator findings applied: deploy now also asserts that 'certificates' starts with the bundle's leaf and 'key' is the bundle's key (before any connection; tested both products, stand-in accepts == 0). Stand-in option restart_fails (PVE 500 'command systemctl reload-or-restart pveproxy failed: exit code 1', files written) cites docs/real-node-trial.md: needs its [observed PVE 9.2.21] entry in docs/api-notes.md. Not modelled: PVE wrong chain order -> 200 then failing handshakes (our client cannot send it now). We check leaf-first only, not the order of the intermediates.
+
+2026-10-11 06:07 For ../sick (board there): (1) docker/Dockerfile needs libio-socket-ssl-perl (>= 2.089, cpanfile pin), libjson-maybexs-perl, libhttp-tiny-perl 0.090 per decision 2, libnet-ssleay-perl for tests. (2) Pin-only devices need a readable CA bundle anyway: HTTP::Tiny::_find_CA_file runs whenever verify_SSL is on (SSL_CERT_FILE, Mozilla::CA or /etc/ssl/certs/ca-certificates.crt) - image needs ca-certificates or the request dies 'Couldn't find a CA bundle'. SSL_force_fingerprint makes that store irrelevant for trust; t/20-client.t proves SSL_CERT_FILE=stranger CA does not let a stranger in (and without force it would - checked). (3) per-type default port and root-to-target as in decisions 1/3.
+
+2026-10-11 06:07 Open/for the notes: PVE 'text after the last block fails' - stand-in takes trailing whitespace as no text (we send fullchain with final newline): observe. verify_timeout kept at core 30 (orchestrator: new cert 1.3-1.6 s after answer, alternation 4-6 s). Deviation from brief: SSL_hostname is '' for IP hosts (RFC 6066 forbids IP SNI); verifycn_name stays the IP. Secret not percent-encoded: a ';' or '%' in it would break PVE/PBS parsing (UUID secrets are fine). IPv6 host untested (HTTP::Tiny 0.088 URL split). dist.ini: dzil guesses main_module ProxmoxBS.pm (no SICK/Target/Proxmox.pm) - maybe set main_module.
+
+2026-10-11 06:08 Done: two device types, role, verified client, stand-in and 111 tests green against the stand-in (not a real node); dzil build/test clean; all new files staged under lib/ t/ + cpanfile. Not committed.
+
+commit 972c986 (pushed)
