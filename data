@@ -1,0 +1,26 @@
+---
+claimed_at: 2026-10-11T06:36:55Z
+claimed_by: sick-worker-proxmox
+class: standard
+completed: 2026-10-11T06:36:55Z
+created: 2026-10-11T05:33:44Z
+id: 4
+priority: medium
+started: 2026-10-11T06:11:53Z
+status: done
+tags:
+- e2e
+- tests
+title: 'e2e in containers: lab CA from the sick image, sick run with the new types'
+updated: 2026-10-11T06:36:55Z
+---
+
+t/e2e/ here: real lab CA from the image of ../sick, sick run with proxmox-ve / proxmox-bs against the stand-in, fingerprint on the port as proof; resources labelled sick=1.
+
+2026-10-11 06:16 Started: t/e2e/device-proxmox.sh against real PBS 4.2.8 / PVE 9.2.21 in containers (images under t/e2e/{pbs,pve,sick}), lab CA = step-ca with init-ca.sh of ../sick (plain docker run), sick in sick-pmx-sick:local (sick:local + trixie libio-socket-ssl-perl/libhttp-tiny-perl + this lib/).
+
+2026-10-11 06:32 Observed in t/e2e/device-proxmox.sh (PVE 9.2.21 with shim, PBS 4.2.8-1; IO::Socket::SSL 2.089, HTTP::Tiny 0.090, OpenSSL 3.5.7). Nothing contradicts docs/api-notes.md. New, not in the notes: (1) a 401 upload with a wrong token is logged in the access log of both nodes with status 401 (PVE /var/log/pveproxy/access.log, PBS api/access.log); (2) after sick reports pve renewed, the first TLS sample ~0-0.2 s later still got the old cert in 2 of 3 runs, then only the new one - consistent with 'alternation ~6 s' (notes item 7, derived); (3) PVE DELETE?restart=1: old/new alternated until 5.7-6.1 s after the answer in all 3 runs; (4) IO::Socket::SSL 2.089: a pin miss (SSL_force_fingerprint, and pin+ca) fails as 'certificate verify failed', so the message carries the presented fingerprint; (5) docker cp cannot read /etc/pve (pmxcfs FUSE mount): copied to /root first; (6) proxmox-backup-manager user generate-token has no --output-format (prints 'Result: {json}'). Unit suite passes inside the trixie image (2.089/0.090): no code change needed. Also found (drift, not touched): POD of ProxmoxVE/ProxmoxBS still says 'Tried against: the stand-in only' and 'commands ... not run' although the trial ran them and this e2e now runs real nodes; same in decision 4 ('not run'). ../sick docker/Dockerfile still lacks libio-socket-ssl-perl/libhttp-tiny-perl (decision 2 card) - sick-pmx-sick:local adds them.
+
+2026-10-11 06:32 Done: t/e2e/device-proxmox.sh + t/e2e/{pbs,pve,sick}/ (Dockerfiles, PVE init/ctl/systemctl shim, PBS start). Real PBS 4.2.8-1 + PVE 9.2.21 in containers, lab CA step-ca 0.30.2 via ../sick init-ca.sh, sick in sick-pmx-sick:local. 65 PASS lines; passed twice in a row from a clean state (109 s, 106 s) after a first green run (109 s). Unit suite green inside the trixie image. Teardown leaves nothing with sick=1. No change to lib/, cpanfile or the notes.
+
+commit 0569ddd (pushed); verified by the hub: one more run, 65 PASS, 110 s, exit 0, nothing sick=1 left
