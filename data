@@ -1,0 +1,22 @@
+---
+claimed_at: 2026-10-11T05:50:44Z
+claimed_by: hub-main
+class: standard
+completed: 2026-10-11T05:50:44Z
+created: 2026-10-11T05:33:20Z
+id: 2
+priority: high
+started: 2026-10-11T05:47:16Z
+status: done
+tags:
+- docs
+- design
+- decision
+title: 'Decision records: trust in the node, HTTP client, types and options, token
+  rights and the way back'
+updated: 2026-10-11T05:50:44Z
+---
+
+docs/decisions/: (1) trust in a node before and after our certificate, root rollover; never accept once; (2) HTTP client: house stack and CPAN incl. existing Proxmox modules; (3) device type names, modules, options, shared role; (4) least privilege of the token, how to create it, the way back.
+
+commit acc0e6c
