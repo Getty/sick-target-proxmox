@@ -1,6 +1,10 @@
 # 3. Device types, modules and options
 
 Status: decided 2026-10-11 by the session that built the distribution. Card #2.
+Amended 2026-10-11, card #7: the core now lets a type name its default port
+(`SICK::Target::default_port`) and tells a written `port` from the default
+(`SICK::Device::has_port`), `../sick` cards #65 and #66; and the roots of the
+run are an anchor of their own (decision 1).
 
 ## Decision
 
@@ -38,15 +42,15 @@ Core keys as for every device: `host`, `port`, `names`, `lifetime`, ...
 | `token_id` | both | yes | `user@realm!tokenid`, e.g. `sick@pve!sick`; not secret |
 | `token_file` | both | yes | file whose first line is the token's secret (`SICK::Config->read_secret`) |
 | `node` | `proxmox-ve` | yes | the node name as in the GUI (`/nodes/<node>/...`); PBS always uses `localhost` |
-| `ca` | both | one of `ca`, `fingerprint` | file or list of files with CA certificates (decision 1) |
-| `fingerprint` | both | one of `ca`, `fingerprint` | SHA-256 of the node's leaf certificate, or a list; hex with or without colons, any case |
+| `ca` | both | one of `ca`, `fingerprint`, unless the run hands roots (decision 1) | file or list of files with CA certificates (decision 1) |
+| `fingerprint` | both | as `ca` | SHA-256 of the node's leaf certificate, or a list; hex with or without colons, any case |
 
-`port` has to be set: SICK's default port is 443, and these APIs listen on
-8006 and 8007. The core cannot tell a port that was set from the default
-(`SICK::Device` has no predicate), so the type refuses port 443 with a message
-that names the right port. A card on `../sick` asks for a per-type default
-port; with it the refusal goes away. (A node reached through port forwarding on
-443 is the price until then.)
+`port` need not be set (card #7): `proxmox-ve` names 8006 and `proxmox-bs`
+8007 as `default_port`, and the core uses it for a device without `port`. A
+`port` that is written is taken as it is, also `port: 443` for a node
+reached through port forwarding. Until card #7 the core had a default of 443
+for every type and could not tell a written port from it, so the types
+refused port 443 with a message naming the right port; that refusal is gone.
 
 The token is split into `token_id` and `token_file` so that the device list
 holds what is not secret and a file holds what is. The header is put together

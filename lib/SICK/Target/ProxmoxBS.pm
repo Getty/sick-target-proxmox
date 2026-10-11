@@ -15,13 +15,12 @@ In the device list of L<SICK>:
     devices:
       pbs1:
         type: proxmox-bs
-        host: pbs1.example.internal
-        port: 8007
+        host: pbs1.example.internal               # port: 8007 by default
         names: [pbs1.example.internal]
         token_id: sick@pbs!sick
         token_file: /etc/sick/pbs1.token          # one line: the secret
-        fingerprint: 'ab:cd:...:ef'               # the self-signed certificate, for the first upload
-        ca: /etc/sick/root.pem                    # our root, from then on
+        fingerprint: 'ab:cd:...:ef'               # the self-signed certificate, for the first upload;
+                                                  # the root of SICK's CA counts by itself
 
 Then
 
@@ -84,31 +83,36 @@ checked then.
 
 =back
 
-At least one of C<ca> and C<fingerprint> is required. C<port> has to be
-set: the default of SICK is 443, and C<port: 443> is refused with a message
-that names 8007. The node in the path is always C<localhost>, as in the GUI
+At least one anchor is required: C<ca>, C<fingerprint>, or the roots of
+SICK's CA, which the run hands the target by itself (see L</HOW THE HOST IS
+TRUSTED>). Without C<port> the type uses 8007; a C<port> that is written is
+taken as it is, also C<port: 443> for a host behind port forwarding. The node in the path is always C<localhost>, as in the GUI
 of Proxmox Backup Server. The common settings of a device (C<host>,
 C<names>, C<lifetime>, C<key>, ...) apply as for every type.
 
 =head1 HOW THE HOST IS TRUSTED
 
-By the anchors of the device list and by nothing else: no "accept once", no
-trust on first use, no store of the system, no switch or environment
-variable that turns the check off. A host that passes neither anchor gets
-no request, no token, no key; the device fails with a message that names
-the fingerprint the host presents and the anchors that were tried.
+By the anchors of the device list, by the roots of SICK's CA
+(L<SICK::Target/trust_roots>: the root of the issuer and the additional
+roots, which the run hands every target) and by nothing else: no "accept
+once", no trust on first use, no store of the system, no switch or
+environment variable that turns the check off. A host that passes no anchor
+gets no request, no token, no key; the device fails with a message that
+names the fingerprint the host presents and the anchors that were tried.
 
 A fresh Proxmox Backup Server presents a self-signed C<proxy.pem>, made at
 installation, that names the host by DNS names only (no address). There is
 no CA to anchor on; pin its fingerprint for the first upload. It is shown on
 the dashboard ("Show Fingerprint") and by
 C<proxmox-backup-manager cert info> on the host - Proxmox's own clients pin
-exactly that. Name our root in C<ca> next to it.
+exactly that. The roots of the run do not cover it: a fresh host with no
+C<fingerprint> (and no C<ca> that covers it) is refused.
 
-After the first upload the host presents our certificate and our root in
-C<ca> is what matches; the pinned certificate is gone (C<proxy.pem> is
-overwritten). Remove the pin then. During a change of our root, name the old
-and the new root in C<ca>.
+After the first upload the host presents our certificate and the roots of
+the run are what matches; the pinned certificate is gone (C<proxy.pem> is
+overwritten). Remove the pin then. During a change of our root the run hands
+the old and the new root alike, as long as the old one is among the
+additional roots of the issuer.
 
 =head1 THE TOKEN
 
@@ -159,7 +163,7 @@ not run.
 =cut
 
 sub product  { 'Proxmox Backup Server' }
-sub api_port { 8007 }
+sub default_port { 8007 }
 
 sub api_node { 'localhost' }
 

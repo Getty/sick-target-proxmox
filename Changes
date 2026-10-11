@@ -7,10 +7,14 @@ Revision history for SICK-Target-Proxmox
       through the node's own API (POST /api2/json/nodes/<node>/certificates/
       custom); the API token is read from a file and sent only in the
       request header.
-    - The connection to the node is always verified, against the ca files
-      and/or SHA-256 fingerprint pins of the device list only: no system
-      store, no proxy, no redirects, nothing in the environment can loosen
-      it. A node that fails the check gets no request.
+    - The connection to the node is always verified, against the roots of
+      SICK's CA that the run hands the target, and the ca files and/or
+      SHA-256 fingerprint pins of the device list: no system store, no
+      proxy, no redirects, nothing in the environment can loosen it. A node
+      that fails the check gets no request. A fresh node needs ca or a pin
+      for the first upload.
+    - Devices without port use 8006 (proxmox-ve) or 8007 (proxmox-bs); a
+      written port, also 443 behind port forwarding, is taken as it is.
     - Key, certificate and leaf-first chain are checked before anything is
       sent; the answer must name the uploaded certificate; error messages
       never quote the token, the key or the body.
@@ -19,5 +23,5 @@ Revision history for SICK-Target-Proxmox
     - Both device types ran end to end through `sick run` against a real
       PVE 9.2.21 API (pveproxy restarted through a systemctl shim, no
       systemd, no cluster) and a real PBS 4.2.8-1, each in a container with
-      the lab CA (t/e2e/device-proxmox.sh). Not tried: under systemd, in a
-      cluster, across a real network.
+      the lab CA (t/e2e/device-proxmox.sh, in the sick image of SICK).
+      Not tried: under systemd, in a cluster, across a real network.

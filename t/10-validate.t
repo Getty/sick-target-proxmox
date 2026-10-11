@@ -35,8 +35,9 @@ sub target {
     ( $product eq 've' ? ( node => 'pve1' ) : () ),
   );
   %base = ( %base, %options );
+  my $roots = delete $base{trust_roots};
   delete $base{$_} for grep { !defined $base{$_} } keys %base;
-  return $CLASS{$product}->new( device => device_for( $product, %base ) );
+  return $CLASS{$product}->new( device => device_for( $product, %base ), ( $roots ? ( trust_roots => $roots ) : () ) );
 }
 
 sub refused {
@@ -78,9 +79,20 @@ for my $product (qw( ve bs )) {
     }
     refused( $product, { fingerprint => [ $fp, 'nope' ] }, qr/invalid SHA-256 fingerprint 'nope'/, 'one bad fingerprint in a list' );
 
-    my $error = refused( $product, { port => undef }, qr/\A\Q$path\E: port 443 is the default of SICK/, 'port 443 (the default) refused' );
-    like( $error, qr/listens on $PORT{$product}, set 'port: $PORT{$product}'/, '  and the message names the port of the API' );
-    refused( $product, { port => 443 }, qr/port 443/, 'port 443 given explicitly: refused as well' );
+    my $default = target( $product, port => undef );
+    ok( eval { $default->validate; 1 }, 'no port: passes' ) or diag $@;
+    is( $CLASS{$product}->default_port, $PORT{$product}, '  the type names its port as default_port' );
+    is( ( $default->endpoint )[1], $PORT{$product}, '  and the target connects there' );
+    my $nat = target( $product, port => 443 );
+    ok( eval { $nat->validate; 1 }, 'port 443 written in the entry (a node behind port forwarding): passes' ) or diag $@;
+    is( ( $nat->endpoint )[1], 443, '  and the target connects to 443' );
+
+    my $root = "-----BEGIN CERTIFICATE-----\nCCCC\n-----END CERTIFICATE-----\n";
+    ok( eval { target( $product, ca => undef, trust_roots => [$root] )->validate; 1 },
+      'no ca and no fingerprint, but roots from the run: passes' ) or diag $@;
+    my $error = refused( $product, { ca => undef, trust_roots => [] }, qr/\A\Q$path\E: needs 'ca' or 'fingerprint' to trust/,
+      'no ca, no fingerprint and no roots from the run: refused' );
+    like( $error, qr/the run hands it no roots of its CA; there is no other way/, '  saying that the run had no roots either' );
 
     refused( $product, { token_id => 'sick@pve' }, qr/\A\Q$path\E: invalid 'token_id'/, 'token_id without a token name' );
     refused( $product, { token_id => 'sick!sick' }, qr/invalid 'token_id'/, 'token_id without a realm' );

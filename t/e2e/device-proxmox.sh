@@ -20,16 +20,21 @@
 #
 # What it proves, each with PASS/FAIL lines; the first FAIL ends it with 1:
 #
-#   1. images: sick:local from ../sick, sick-pmx-sick:local on top of it
-#      (trixie IO::Socket::SSL, HTTP::Tiny, this lib/), sick-pmx-pbs:4 and
-#      sick-pmx-pve:9 from t/e2e/{pbs,pve}; versions recorded
-#   2. the unit suite of this distribution passes inside sick-pmx-sick:local
+#   1. images: sick:local from ../sick (its docker/Dockerfile, with the
+#      checkouts of ../sick, ../sick-target-ciscosb and this one; it carries
+#      lib/ of this distribution and trixie's IO::Socket::SSL and HTTP::Tiny),
+#      sick-pmx-pbs:4 and sick-pmx-pve:9 from t/e2e/{pbs,pve}; versions
+#      recorded
+#   2. the unit suite of this distribution passes inside sick:local
 #      (Debian's Perl modules, not the ones of the developer machine)
 #   3. up: the lab CA is healthy; PBS and PVE answer on 8007/8006 with their
 #      own certificates; tokens made with the commands of decision 4, the
 #      secrets parsed from the JSON of the CLI straight into 0600 files;
 #      the PVE cluster CA copied out with docker cp, the PBS fingerprint
 #      read with proxmox-backup-manager cert info - the out-of-band anchors
+#      The device list writes no port for pve and pbs (the types' default
+#      ports) and names our root nowhere: the run hands it to the targets
+#      (trust_roots). pve has the cluster CA in ca, pbs the pin only.
 #   4. sick check before: both foreign-ca; no POST in the access logs
 #   5. sick run: both renewed, exit 0; while it runs, no /proc/*/cmdline or
 #      /proc/*/environ in the sick container holds a secret (counted)
@@ -37,9 +42,11 @@
 #      verifies with the lab root under the host name; PVE settles on it
 #      (sampled after the restart); exactly one POST per node, status 200
 #   7. a second sick run: unchanged, no new POST
-#   8. wrong token: failed with 401, the port unchanged
-#   9. wrong pin (fingerprint only): failed before any request, the message
-#      names the fingerprint the node presents; no new line in the access log
+#   8. wrong token: failed with 401, the port unchanged (pbs-badtoken has
+#      no anchor of its own: the root of the run lets the request through)
+#   9. a wrong pin while the node presents our certificate: the root of the
+#      run lets the upload through, renewed (the refusal of a wrong pin is
+#      in step 10, where the roots do not cover the node)
 #  10. the way back: DELETE with curl -H @file --cacert; PVE presents its
 #      pve-ssl.pem again, PBS a new self-signed one; sick check: foreign-ca;
 #      the stale PBS pin fails without a request, PVE (cluster CA) renews
@@ -50,8 +57,9 @@
 #      be gone; images stay as a cache; nothing else is touched, no prune
 #
 # Prerequisites: Docker with BuildKit, perl and openssl on this machine; the
-# checkouts side by side: <dir>/sick, <dir>/sick-target-ciscosb (for the
-# sick image) and <dir>/sick-target-proxmox (this one); the internet for the
+# three checkouts side by side that the sick image of ../sick is built from:
+# <dir>/sick, <dir>/sick-target-ciscosb and <dir>/sick-target-proxmox (this
+# one, whose working tree goes into the image); the internet for the
 # images and the Proxmox packages at the first build (PVE: about 3 minutes).
 #
 # Parameters, all from the environment:
@@ -175,7 +183,7 @@ sick_args=(--label sick=1 --network "$net" --init --read-only --cap-drop ALL
   -v "$work/sick.yml:/etc/sick/sick.yml:ro" -v "$work/anchors:/etc/sick/anchors:ro")
 sick() {
   set +e
-  out=$(docker run --rm --name "$p-run" "${sick_args[@]}" "$p-sick:local" sick "$@" 2>&1)
+  out=$(docker run --rm --name "$p-run" "${sick_args[@]}" sick:local sick "$@" 2>&1)
   code=$?
   set -e
   all_out+=$out$'\n'
@@ -213,7 +221,7 @@ posts() {
     | { if [ -n "${2:-}" ]; then grep -E "\" $2 "; else cat; fi; } | grep -c . || true
 }
 issued() {
-  docker run --rm --label sick=1 --name "$p-read" -v "$p-state:/var/lib/sick:ro" --entrypoint cat "$p-sick:local" "/var/lib/sick/devices/$1.json" 2>/dev/null \
+  docker run --rm --label sick=1 --name "$p-read" -v "$p-state:/var/lib/sick:ro" --entrypoint cat sick:local "/var/lib/sick/devices/$1.json" 2>/dev/null \
     | perl -MJSON::PP -0777 -ne 'my $r = eval { decode_json($_) } or exit; print lc( ( ( $r->{last_issue} || {} )->{fingerprint_sha256} // q{} ) =~ s/://gr )'
 }
 # secret_from_json <file>: reads the output of a token command on stdin, writes
@@ -227,7 +235,7 @@ secret_from_json() {
 }
 # put_secret <name>: the 0600 file of the work dir into the root-owned secrets volume
 put_secret() {
-  docker run --rm -i --label sick=1 --name "$p-put" --network none -v "$p-secrets:/s" --entrypoint sh "$p-sick:local" \
+  docker run --rm -i --label sick=1 --name "$p-put" --network none -v "$p-secrets:/s" --entrypoint sh sick:local \
     -c 'umask 077; cat >"/s/$1"' sh "$1" <"$work/secrets/$1"
 }
 # hits <text>: how many of the secrets occur in it (count only)
@@ -235,16 +243,14 @@ hits() { grep -cFf <(cat "$work"/secrets/*.token) <<<"$1" || true; }
 
 #### 1. images
 
-step 'images: sick:local, sick-pmx-sick:local, sick-pmx-pbs:4, sick-pmx-pve:9'
+step 'images: sick:local, sick-pmx-pbs:4, sick-pmx-pve:9'
 build() { # <log> <docker build arguments>
   local log=$work/build/$1
   shift
   docker build --label sick=1 "$@" >"$log" 2>&1 || { tail -30 "$log" >&2; fail "docker build $*"; }
 }
 build sick.log --build-arg STEP_VERSION=0.30.2 --build-arg SICK_FROM=local -f "$sick_repo/docker/Dockerfile" -t sick:local "$context"
-pass 'sick:local is built from ../sick (and ../sick-target-ciscosb)'
-build pmx-sick.log -f "$here/sick/Dockerfile" -t "$p-sick:local" "$context"
-pass "$p-sick:local adds the trixie packages and lib/ of this distribution"
+pass 'sick:local is built from ../sick, ../sick-target-ciscosb and lib/ of this distribution'
 build pbs.log -t "$p-pbs:4" "$here/pbs"
 pass "$p-pbs:4 is built"
 build pve.log -t "$p-pve:9" "$here/pve"
@@ -252,12 +258,12 @@ pass "$p-pve:9 is built"
 docker image inspect "$step_image" >/dev/null 2>&1 || docker pull -q "$step_image" >/dev/null || fail "cannot pull $step_image"
 note 'versions'
 {
-  for image in sick:local "$p-sick:local" "$p-pbs:4" "$p-pve:9"; do
+  for image in sick:local "$p-pbs:4" "$p-pve:9"; do
     printf '%s %s\n' "$image" "$(docker image inspect -f '{{.Id}}' "$image")"
   done
   printf '%s %s\n' "$step_image" "$(docker image inspect -f '{{join .RepoDigests " "}}' "$step_image")"
   docker run --rm --label sick=1 --name "$p-ver" --network none --entrypoint step-ca "$step_image" version | head -n 1
-  docker run --rm --label sick=1 --name "$p-ver" --network none --entrypoint sh "$p-sick:local" -c '
+  docker run --rm --label sick=1 --name "$p-ver" --network none --entrypoint sh sick:local -c '
     sick --version; openssl version
     perl -MIO::Socket::SSL -MHTTP::Tiny -MNet::SSLeay -e "printf qq{perl %vd, IO::Socket::SSL %s, HTTP::Tiny %s, Net::SSLeay %s\n}, \$^V, IO::Socket::SSL->VERSION, HTTP::Tiny->VERSION, Net::SSLeay->VERSION"
     dpkg-query -W libio-socket-ssl-perl libhttp-tiny-perl libnet-ssleay-perl'
@@ -268,11 +274,11 @@ note 'versions'
 
 #### 2. the unit suite in the trixie image
 
-step "the unit suite inside $p-sick:local"
+step "the unit suite inside sick:local"
 set +e
 unit=$(docker run --rm --label sick=1 --name "$p-unit" --network none --entrypoint sh -e PERL5LIB=/src/sick/lib \
   --tmpfs /tmp:mode=1777 -v "$sick_repo/lib:/src/sick/lib:ro" -v "$repo/lib:/src/pmx/lib:ro" -v "$repo/t:/src/pmx/t:ro" \
-  -w /src/pmx "$p-sick:local" -c 'prove -lr t' 2>&1)
+  -w /src/pmx sick:local -c 'prove -lr t' 2>&1)
 unit_rc=$?
 set -e
 show <<<"$unit"
@@ -301,7 +307,7 @@ docker run -d --name "$p-pve" --label sick=1 --network "$net" \
 docker run -d --name "$p-client" --label sick=1 --network "$net" --init --read-only --cap-drop ALL \
   --security-opt no-new-privileges:true --tmpfs /tmp:mode=0700,size=1m \
   -v "$p-handover:/etc/sick/ca:ro" -v "$p-secrets:/etc/sick/secrets:ro" \
-  --entrypoint sleep "$p-sick:local" infinity >/dev/null
+  --entrypoint sleep sick:local infinity >/dev/null
 
 # PVE: what the units would start, as children of PID 1 (docs/real-node-trial.md)
 for _ in $(seq 1 50); do docker exec "$p-pve" test -p /run/sick-ctl 2>/dev/null && break; sleep 0.2; done
@@ -391,21 +397,18 @@ devices:
   pve:
     type: proxmox-ve
     host: $pve
-    port: 8006
     names: [$pve]
     node: pve1
     token_id: sick@pve!sick
     token_file: /etc/sick/secrets/pve.token
-    ca: [/etc/sick/anchors/pve-root-ca.pem, /etc/sick/ca/root_ca.crt]
+    ca: /etc/sick/anchors/pve-root-ca.pem
   pbs:
     type: proxmox-bs
     host: $pbs
-    port: 8007
     names: [$pbs]
     token_id: sick@pbs!sick
     token_file: /etc/sick/secrets/pbs.token
     fingerprint: '$pbs_pin'
-    ca: /etc/sick/ca/root_ca.crt
   # the same nodes with what goes wrong
   pve-badtoken:
     type: proxmox-ve
@@ -423,7 +426,6 @@ devices:
     names: [$pbs]
     token_id: sick@pbs!sick
     token_file: /etc/sick/secrets/wrong.token
-    ca: /etc/sick/ca/root_ca.crt
   pve-badpin:
     type: proxmox-ve
     host: $pve
@@ -456,7 +458,7 @@ same 'no POST in the access log of PBS' 0 "$(posts pbs)"
 #### 5. the first run, watched from inside
 
 step 'sick run: both devices; /proc of the sick container watched meanwhile'
-docker run -d --name "$p-run1" "${sick_args[@]}" "$p-sick:local" sick run --verbose pve pbs >/dev/null
+docker run -d --name "$p-run1" "${sick_args[@]}" sick:local sick run --verbose pve pbs >/dev/null
 # every 0.1 s: each cmdline and environ of every process of the container,
 # searched for the secrets (the patterns come from the files, -f); counts only
 probe='h=0; n=0; for f in /proc/[0-9]*/cmdline /proc/[0-9]*/environ; do
@@ -527,18 +529,22 @@ same 'port 8007 still presents the certificate of before' "$issued_pbs" "$(finge
 
 #### 9. wrong pin
 
-step 'a wrong pin: no request, the presented fingerprint in the message'
-before_pve=$(posts pve)
-before_pbs=$(posts pbs)
+step 'a wrong pin while the node presents our certificate: the root of the run decides'
+before_pve=$(posts pve 200)
+before_pbs=$(posts pbs 200)
 sick run --force pve-badpin pbs-badpin
-same 'sick run ends with 1' 1 "$code"
+same 'sick run ends with 0' 0 "$code"
+expect 'pve-badpin renewed: the pin misses, the root of the run matches' '^pve-badpin +renewed +' "$out"
+expect 'pbs-badpin renewed: the pin misses, the root of the run matches' '^pbs-badpin +renewed +' "$out"
+same '... with one more upload to PVE' "$((before_pve + 1))" "$(posts pve 200)"
+same '... and to PBS' "$((before_pbs + 1))" "$(posts pbs 200)"
+issued_pve=$(issued pve-badpin)
+issued_pbs=$(issued pbs-badpin)
+samples=$(sample "$pve" 8006 12)
+settled "$issued_pve" "$samples" 4000 || fail 'PVE did not settle on the certificate of pve-badpin within 12 s'
+same 'port 8006 presents the certificate of pve-badpin' "$issued_pve" "$(fingerprint "$pve" 8006)"
+same 'port 8007 presents the certificate of pbs-badpin' "$issued_pbs" "$(fingerprint "$pbs" 8007)"
 pin_text() { sed 's/../&:/g; s/:$//' <<<"$1"; }
-expect 'pve-badpin failed, naming the fingerprint 8006 presents' "^pve-badpin +failed .*$(pin_text "$issued_pve")" "$out"
-expect 'pbs-badpin failed, naming the fingerprint 8007 presents' "^pbs-badpin +failed .*$(pin_text "$issued_pbs")" "$out"
-same 'no new line in the access log of PVE' "$before_pve" "$(posts pve)"
-same 'no new line in the access log of PBS' "$before_pbs" "$(posts pbs)"
-same 'port 8006 unchanged' "$issued_pve" "$(fingerprint "$pve" 8006)"
-same 'port 8007 unchanged' "$issued_pbs" "$(fingerprint "$pbs" 8007)"
 
 #### 10. the way back
 
@@ -577,7 +583,7 @@ same '... with one more upload' "$((before_pve + 1))" "$(posts pve 200)"
 #### 11. the secrets
 
 step 'the secrets appear nowhere'
-records=$(docker run --rm --label sick=1 --name "$p-read" -v "$p-state:/var/lib/sick:ro" --entrypoint sh "$p-sick:local" -c 'cat /var/lib/sick/devices/*.json')
+records=$(docker run --rm --label sick=1 --name "$p-read" -v "$p-state:/var/lib/sick:ro" --entrypoint sh sick:local -c 'cat /var/lib/sick/devices/*.json')
 node_logs=$(
   docker exec "$p-pve" sh -c "cat $pve_access /var/log/systemctl-shim.log 2>/dev/null"
   docker exec "$p-pbs" sh -c 'cat /var/log/proxmox-backup/api/*.log /var/log/pbs-*.log 2>/dev/null'

@@ -17,15 +17,13 @@ In the device list of L<SICK>:
     devices:
       pve1:
         type: proxmox-ve
-        host: pve1.example.internal
-        port: 8006
+        host: pve1.example.internal               # port: 8006 by default
         names: [pve1.example.internal]
         node: pve1                                # the node name as in the GUI
         token_id: sick@pve!sick
         token_file: /etc/sick/pve1.token          # one line: the secret
-        ca:
-          - /etc/sick/pve-root-ca.pem             # the cluster CA, for the first upload
-          - /etc/sick/root.pem                    # our root, from then on
+        ca: /etc/sick/pve-root-ca.pem             # the cluster CA, for the first upload;
+                                                  # the root of SICK's CA counts by itself
 
 Then
 
@@ -90,18 +88,22 @@ checked then.
 
 =back
 
-At least one of C<ca> and C<fingerprint> is required. C<port> has to be
-set: the default of SICK is 443, and C<port: 443> is refused with a message
-that names 8006. The common settings of a device (C<host>, C<names>,
-C<lifetime>, C<key>, ...) apply as for every type.
+At least one anchor is required: C<ca>, C<fingerprint>, or the roots of
+SICK's CA, which the run hands the target by itself (see L</HOW THE NODE IS
+TRUSTED>). Without C<port> the type uses 8006; a C<port> that is written is
+taken as it is, also C<port: 443> for a node behind port forwarding. The
+common settings of a device (C<host>, C<names>, C<lifetime>, C<key>, ...)
+apply as for every type.
 
 =head1 HOW THE NODE IS TRUSTED
 
-By the anchors of the device list and by nothing else: no "accept once", no
-trust on first use, no store of the system, no switch or environment
-variable that turns the check off. A node that passes neither anchor gets
-no request, no token, no key; the device fails with a message that names
-the fingerprint the node presents and the anchors that were tried.
+By the anchors of the device list, by the roots of SICK's CA
+(L<SICK::Target/trust_roots>: the root of the issuer and the additional
+roots, which the run hands every target) and by nothing else: no "accept
+once", no trust on first use, no store of the system, no switch or
+environment variable that turns the check off. A node that passes no anchor
+gets no request, no token, no key; the device fails with a message that
+names the fingerprint the node presents and the anchors that were tried.
 
 A fresh node presents C<pve-ssl.pem>, signed by the cluster's own CA
 (F</etc/pve/pve-root-ca.pem>), with the node name, the node name with the
@@ -112,8 +114,8 @@ search domain, and the cluster address as names. So, for the first upload:
 =item *
 
 copy F</etc/pve/pve-root-ca.pem> from the node over a path you trust (C<scp>
-with a known host key, say) and name it in C<ca>, next to our root, and use
-as C<host> one of the names of C<pve-ssl.pem>; or
+with a known host key, say) and name it in C<ca>, and use as C<host> one of
+the names of C<pve-ssl.pem>; or
 
 =item *
 
@@ -123,9 +125,13 @@ the cluster CA is the better first anchor.
 
 =back
 
-After the first upload the node presents our certificate, and our root in
-C<ca> is what matches. Remove a pin then. During a change of our root, name
-the old and the new root in C<ca>.
+The roots of the run do not cover C<pve-ssl.pem>: a fresh node with no
+C<ca> and no C<fingerprint> is refused. After the first upload the node
+presents our certificate, and the roots of the run are what matches; C<ca>
+and C<fingerprint> may go then (a pin has to: C<pveupdate> renews
+C<pve-ssl.pem>). During a change of our root the run hands the old and the
+new root alike, as long as the old one is among the additional roots of the
+issuer.
 
 =head1 THE TOKEN
 
@@ -177,7 +183,7 @@ not run.
 =cut
 
 sub product  { 'Proxmox VE' }
-sub api_port { 8006 }
+sub default_port { 8006 }
 
 sub type_required_options { qw( node ) }
 

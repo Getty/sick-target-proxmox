@@ -24,7 +24,10 @@ my $Client = 'SICK::Target::Proxmox::Client';
 
 subtest 'constructor' => sub {
   ok( !eval { $Client->new( host => '127.0.0.1', port => 8006 ); 1 }, 'no anchor: refused' );
-  like( $@, qr/needs at least one ca file or fingerprint/, '  with the reason' );
+  like( $@, qr/needs at least one ca file, root or fingerprint/, '  with the reason' );
+  ok( !eval { $Client->new( host => '127.0.0.1', port => 8006, roots => [] ); 1 }, 'an empty list of roots is no anchor' );
+  ok( !eval { $Client->new( host => '127.0.0.1', port => 8006, roots => ['nothing'] ); 1 }, 'a root that is no PEM: refused' );
+  like( $@, qr/a root that is no PEM certificate/, '  with the reason' );
   ok( !eval { $Client->new( host => '127.0.0.1', port => 8006, fingerprints => ['abc'] ); 1 }, 'a bad fingerprint: refused' );
   like( $@, qr/invalid SHA-256 fingerprint 'abc'/, '  naming it' );
   is( $Client->normalize_fingerprint( join ':', map { uc } ( 'a1' x 32 ) =~ /(..)/g ), 'a1' x 32, 'fingerprints are normalized' );
@@ -62,6 +65,24 @@ subtest 'ssl options: ca and pins' => sub {
   ok( !$ssl->{SSL_force_fingerprint}, 'not forced: a certificate that misses the pin goes to the ca check' );
 };
 
+my $root_pem = do { local ( @ARGV, $/ ) = $f->{root}{cert}; <> };
+
+subtest 'ssl options: roots of the run' => sub {
+  my $client = $Client->new( host => '127.0.0.1', port => 8006, roots => [$root_pem] );
+  my $ssl = $client->ssl_options;
+  ok( -r $ssl->{SSL_ca_file}, 'the roots go into the ca file' );
+  my $pem = do { local ( @ARGV, $/ ) = $ssl->{SSL_ca_file}; <> };
+  is( $pem, $root_pem, '  holding the root' );
+  is( $client->anchors, 'the roots of the run (1)', 'anchors counts them' );
+
+  $client = $Client->new( host => '127.0.0.1', port => 8006, ca => $f->{cluster_ca}{cert}, roots => [$root_pem] );
+  $pem = do { local ( @ARGV, $/ ) = $client->ssl_options->{SSL_ca_file}; <> };
+  is( scalar( () = $pem =~ /-----BEGIN CERTIFICATE-----/g ), 2, 'next to a ca file: one file with both' );
+
+  $client = $Client->new( host => '127.0.0.1', port => 8007, roots => [$root_pem], fingerprints => $f->{pbs_fresh}{fingerprint} );
+  ok( !$client->ssl_options->{SSL_force_fingerprint}, 'with a pin: not forced, the roots are a ca' );
+};
+
 subtest 'the HTTP client ignores the environment' => sub {
   local $ENV{PERL_HTTP_TINY_SSL_INSECURE_BY_DEFAULT} = 1;
   local $ENV{https_proxy} = 'http://127.0.0.1:9';
@@ -94,6 +115,19 @@ subtest 'a pin misses, the ca decides' => sub {
   my $standin = standin( 'bs', $f, $dir, $secret, serve => $f->{issued} );
   my $res = post( $standin, ca => $f->{root}{cert}, fingerprints => [ $f->{stranger}{fingerprint} ] );
   is( $res->{status}, 200, 'our certificate passes by our root although the pin does not match' ) or diag $res->{content};
+};
+
+subtest 'trusted by the roots of the run alone' => sub {
+  my $standin = standin( 'bs', $f, $dir, $secret, serve => $f->{issued} );
+  my $res = post( $standin, roots => [$root_pem] );
+  is( $res->{status}, 200, 'our certificate, served with the intermediate, passes by the root of the run' ) or diag $res->{content};
+
+  my $stranger = standin( 'bs', $f, $dir, $secret, serve => $f->{stranger} );
+  $res = post( $stranger, roots => [$root_pem] );
+  is( $res->{status}, 599, 'a certificate that chains to nothing named: no answer' );
+  like( $res->{content}, qr/certificate verify failed/, '  the certificate did not pass' );
+  ok( $stranger->settle, 'the stand-in is through with every connection' );
+  is( scalar $stranger->requests, 0, 'the stand-in read no request' );
 };
 
 subtest 'the environment does not make a stranger trusted' => sub {

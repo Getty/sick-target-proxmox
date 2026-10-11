@@ -30,6 +30,7 @@ my %NODE   = ( ve => 'pve1', bs => 'localhost' );
 # target( $product, $standin, %options ) -> ( $target, \@log )
 sub target {
   my ( $product, $standin, %options ) = @_;
+  my $roots = delete $options{trust_roots};
   my @log;
   my $device = device_for(
     $product,
@@ -39,7 +40,7 @@ sub target {
     ( $product eq 've' ? ( node => 'pve1' ) : () ),
     %options,
   );
-  my $target = $CLASS{$product}->new( device => $device, log => sub { push @log, $_[0] } );
+  my $target = $CLASS{$product}->new( device => $device, log => sub { push @log, $_[0] }, ( $roots ? ( trust_roots => $roots ) : () ) );
   $target->validate;
   return ( $target, \@log );
 }
@@ -70,7 +71,8 @@ sub presents {
   }
 }
 
-my $issued = bundle_of( $f->{issued} );
+my $issued   = bundle_of( $f->{issued} );
+my $root_pem = do { local ( @ARGV, $/ ) = $f->{root}{cert}; <> };
 
 sub colons { join q{:}, $_[0] =~ m{(..)}g }
 my %COLONS = map { $_ => colons( $f->{$_}{fingerprint} ) } qw( stranger pve_fresh pbs_fresh );
@@ -110,6 +112,23 @@ for my $product (qw( ve bs )) {
     my ($target) = target( $product, $standin, ca => $f->{root}{cert} );
     is( deploy_error( $target, bundle_of( $f->{issued2} ) ), undef, 'deploy returns' );
     ok( presents( $target, $f->{issued2}{fingerprint}, 5 ), 'and the port presents the next certificate' );
+  };
+
+  subtest $product.': trusted by the roots of the run, no ca, no pin' => sub {
+    my $standin = standin( $product, $f, $dir, $secret, serve => $f->{issued}, has_custom => 1 );
+    my ($target) = target( $product, $standin, trust_roots => [$root_pem] );
+    is( deploy_error( $target, bundle_of( $f->{issued2} ) ), undef, 'deploy returns' );
+    is( scalar $standin->uploads, 1, 'one upload' );
+  };
+
+  subtest $product.': a fresh node, the roots of the run only' => sub {
+    my $standin = standin( $product, $f, $dir, $secret );
+    my ($target) = target( $product, $standin, trust_roots => [$root_pem] );
+    my $error = deploy_error( $target, $issued );
+    like( $error, qr/failed: .*certificate verify failed/, 'deploy fails: the roots do not cover the certificate of a fresh node' );
+    like( $error, qr/the node presents SHA-256 \Q@{[ colons( $fresh->{fingerprint} ) ]}\E/, '  naming what the node presents' );
+    like( $error, qr/tried the roots of the run \(1\)\z/, '  and the anchors that were tried' );
+    nothing_sent( $standin, 'roots only, fresh node' );
   };
 
   subtest $product.': trusted by a pin' => sub {

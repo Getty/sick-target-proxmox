@@ -10,7 +10,7 @@ use Moo::Role;
 our $VERSION = '0.001';
 
 requires qw(
-  product api_port api_node token_id_valid authorization upload_fields
+  product api_node token_id_valid authorization upload_fields
   answer_certificate api_message validate_type_options
 );
 
@@ -22,7 +22,7 @@ requires qw(
     with 'SICK::Target::Proxmox::Role';
 
     sub product               { 'Proxmox XY' }
-    sub api_port              { 8009 }
+    sub default_port          { 8009 }
     sub api_node              { 'localhost' }
     sub token_id_valid        { ... }    # ( $token_id ) -> true or false
     sub authorization         { ... }    # ( $token_id, $secret ) -> header value
@@ -66,10 +66,6 @@ around validate => sub {
   my $device = $self->device;
   my $where  = $device->path;
 
-  croak $where.': port 443 is the default of SICK; the API of '.$self->product.' listens on '
-      .$self->api_port.', set \'port: '.$self->api_port.'\''
-    if $device->port == 443;
-
   # The value is not quoted: a token id with the secret appended is a
   # likely mistake, and the message would carry the secret then.
   my $token_id = $self->option('token_id');
@@ -84,8 +80,9 @@ around validate => sub {
 
   my @ca   = $self->_list( $where, 'ca' );
   my @pins = $self->_list( $where, 'fingerprint' );
-  croak $where.': needs \'ca\' or \'fingerprint\' to trust '.$self->product.' by; there is no other way'
-    unless @ca || @pins;
+  croak $where.': needs \'ca\' or \'fingerprint\' to trust '.$self->product.' by, the run hands it no roots of its CA'
+      .'; there is no other way'
+    unless @ca || @pins || @{ $self->trust_roots };
   for my $path (@ca) {
     eval { SICK::Target::Proxmox::Client->read_ca_file($path); 1 }
       or croak $where.'.ca: '.$self->_first_line($@);
@@ -101,13 +98,17 @@ around validate => sub {
 
     $target->validate;
 
-The checks of L<SICK::Target/validate>, then: C<port> is not C<443> (the
-default of SICK; the message names the port of the API), C<token_id> has the
-form of a token id of the product (its value is never quoted),
-C<token_file> is a path, the checks of the type, and at least one of C<ca>
-and C<fingerprint>: every C<ca> file can be read and holds a PEM
+The checks of L<SICK::Target/validate>, then: C<token_id> has the form of a
+token id of the product (its value is never quoted), C<token_file> is a
+path, the checks of the type, and at least one anchor - C<ca>,
+C<fingerprint>, or the roots the run hands the target
+(L<SICK::Target/trust_roots>): every C<ca> file can be read and holds a PEM
 certificate, every C<fingerprint> is a SHA-256 fingerprint. The token file
 is not read here. Croaks with the path of the device in the list.
+
+C<port> is not checked: without it the type's L<SICK::Target/default_port>
+applies, and a C<port> that is written - also C<port: 443>, for a node
+behind port forwarding - is taken as it is.
 
 =cut
 
@@ -138,6 +139,7 @@ sub deploy {
     host         => $host,
     port         => $port,
     ca           => [ $self->_list( $self->device->path, 'ca' ) ],
+    roots        => $self->trust_roots,
     fingerprints => [ $self->_list( $self->device->path, 'fingerprint' ) ],
   );
   my $secret   = $self->_secret;
@@ -197,7 +199,8 @@ The header is put together in memory.
 
 One request: C<POST /api2/json/nodes/E<lt>nodeE<gt>/certificates/custom>
 with the certificate, its chain and the key as JSON, over a connection that
-passed C<ca> or C<fingerprint> (L<SICK::Target::Proxmox::Client>).
+passed C<ca>, the roots of the run (L<SICK::Target/trust_roots>) or
+C<fingerprint> (L<SICK::Target::Proxmox::Client>).
 
 =item 4.
 
@@ -325,9 +328,10 @@ sub _first_line {
 
 =over 4
 
-=item C<product>, C<api_port>
+=item C<product>, C<default_port>
 
-The name of the product for messages, and the port of its API.
+The name of the product for messages, and the port of its API
+(L<SICK::Target/default_port>).
 
 =item C<api_node>
 

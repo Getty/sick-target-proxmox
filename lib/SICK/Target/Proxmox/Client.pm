@@ -19,7 +19,8 @@ our $VERSION = '0.001';
     my $client = SICK::Target::Proxmox::Client->new(
       host         => 'pve1.example.internal',
       port         => 8006,
-      ca           => [ '/etc/sick/pve-root-ca.pem', '/etc/sick/root.pem' ],
+      ca           => ['/etc/sick/pve-root-ca.pem'],
+      roots        => $target->trust_roots,    # PEM texts
       fingerprints => [],
     );
     my $response = $client->post_json( '/api2/json/nodes/pve1/certificates/custom',
@@ -29,7 +30,8 @@ our $VERSION = '0.001';
 
 One HTTPS request to the API of a Proxmox VE node or a Proxmox Backup Server,
 over a connection whose certificate was checked against the anchors the
-operator named in the device list, and against nothing else
+operator named in the device list and the roots of SICK's CA, and against
+nothing else
 (F<docs/decisions/0001-trust-in-the-node.md>).
 
 The connection is L<HTTP::Tiny> on L<IO::Socket::SSL>, set up the one way
@@ -47,17 +49,17 @@ C<SSL_verifycn_name>), which is also sent as SNI where it is a name.
 
 =item *
 
-the C<ca> files are written, concatenated, into one PEM file in a private
-temporary directory (L<SICK::Temp>) and given as C<SSL_ca_file>; that file
-replaces every store of the system.
+the C<ca> files and the C<roots> are written, concatenated, into one PEM
+file in a private temporary directory (L<SICK::Temp>) and given as
+C<SSL_ca_file>; that file replaces every store of the system.
 
 =item *
 
 the C<fingerprints> become C<SSL_fingerprint>: a leaf certificate with one of
 these SHA-256 fingerprints is accepted on its own, without the check of the
-name. Without C<ca>, C<SSL_force_fingerprint> is set as well, so that the
-certificate has to be one of the pinned ones and no store of the system
-counts.
+name. Without C<ca> and C<roots>, C<SSL_force_fingerprint> is set as well,
+so that the certificate has to be one of the pinned ones and no store of
+the system counts.
 
 =item *
 
@@ -105,13 +107,23 @@ by default.
 
 =cut
 
+has roots => ( is => 'ro', isa => ArrayRef [Str], default => sub { [] } );
+
+=attr roots
+
+CA certificates as PEM texts, one or more per element: the roots of SICK's
+CA (L<SICK::Target/trust_roots>). They count as C<ca> files do. An empty
+list by default.
+
+=cut
+
 has fingerprints => ( is => 'ro', isa => ArrayRef [Str], default => sub { [] } );
 
 =attr fingerprints
 
 SHA-256 fingerprints of leaf certificates the node may present: 64 hex
 digits, colons allowed, any case. An empty list by default. At least one
-C<ca> file or one fingerprint is required.
+C<ca> file, one root or one fingerprint is required.
 
 =cut
 
@@ -129,12 +141,16 @@ Proxmox VE reloads its proxy before it answers an upload.
 around BUILDARGS => sub {
   my ( $orig, $class, @args ) = @_;
   my %arg = %{ $class->$orig(@args) };
-  for my $list (qw( ca fingerprints )) {
+  for my $list (qw( ca roots fingerprints )) {
     $arg{$list} = [ $arg{$list} ] if defined $arg{$list} && !ref $arg{$list};
     delete $arg{$list} unless defined $arg{$list};
   }
-  croak $class.'->new needs at least one ca file or fingerprint: there is nothing else to trust the node by'
-    unless @{ $arg{ca} || [] } || @{ $arg{fingerprints} || [] };
+  croak $class.'->new needs at least one ca file, root or fingerprint: there is nothing else to trust the node by'
+    unless @{ $arg{ca} || [] } || @{ $arg{roots} || [] } || @{ $arg{fingerprints} || [] };
+  for my $root ( @{ $arg{roots} || [] } ) {
+    croak $class.'->new: a root that is no PEM certificate'
+      unless defined $root && !ref $root && $root =~ /-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/s;
+  }
   for my $fingerprint ( @{ $arg{fingerprints} || [] } ) {
     croak $class.'->new: invalid SHA-256 fingerprint \''.( defined $fingerprint && !ref $fingerprint ? $fingerprint : q{} ).'\''
       unless defined $class->normalize_fingerprint($fingerprint);
@@ -145,12 +161,13 @@ around BUILDARGS => sub {
 =method new
 
     my $client = SICK::Target::Proxmox::Client->new(
-      host => $host, port => $port, ca => \@files, fingerprints => \@pins );
+      host => $host, port => $port, ca => \@files, roots => \@pems, fingerprints => \@pins );
 
-C<ca> and C<fingerprints> also take a single value. Croaks with
-C<< ...->new needs at least one ca file or fingerprint ... >> without
-either, and with C<< invalid SHA-256 fingerprint '<value>' >>. The C<ca>
-files are read on the first request.
+C<ca>, C<roots> and C<fingerprints> also take a single value. Croaks with
+C<< ...->new needs at least one ca file, root or fingerprint ... >>
+without any, with C<< a root that is no PEM certificate >>, and with
+C<< invalid SHA-256 fingerprint '<value>' >>. The C<ca> files are read on
+the first request.
 
 =cut
 
@@ -174,8 +191,11 @@ colons, in any case. Works on the class as well.
 
 =cut
 
-# The ca files, concatenated into one PEM file: SSL_ca_file takes one path.
-# Public data; the directory goes with the client.
+# The ca files and the roots, concatenated into one PEM file: SSL_ca_file
+# takes one path. Public data; the directory goes with the client.
+# (SSL_ca would take the roots without a file, but as X509 handles of
+# Net::SSLeay made and freed here, and next to SSL_ca_file for the ca
+# files; one file keeps one store.)
 has _tmp => ( is => 'lazy', isa => InstanceOf ['SICK::Temp'], init_arg => undef );
 sub _build__tmp { SICK::Temp->dir }
 
@@ -183,8 +203,9 @@ has _ca_file => ( is => 'lazy', init_arg => undef );
 
 sub _build__ca_file {
   my ( $self ) = @_;
-  return undef unless @{ $self->ca };
-  my $pem = join q{}, map { $self->read_ca_file($_) } @{ $self->ca };
+  return undef unless @{ $self->ca } || @{ $self->roots };
+  my $pem = join q{}, ( map { $self->read_ca_file($_) } @{ $self->ca } ),
+    map { ( s/\r\n/\n/gr )."\n" } map { /(-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----)/sg } @{ $self->roots };
   return $self->_tmp->write( 'ca.pem', $pem, 0644 );
 }
 
@@ -221,12 +242,13 @@ sub ssl_options {
     SSL_hostname        => SICK::Names::is_ip($host) ? q{} : $host,
   );
   my @pins = map { 'sha256$'.$self->normalize_fingerprint($_) } @{ $self->fingerprints };
-  $ssl{SSL_ca_file} = $self->_ca_file if @{ $self->ca };
+  my $ca_file = $self->_ca_file;
+  $ssl{SSL_ca_file} = $ca_file if defined $ca_file;
   if (@pins) {
     $ssl{SSL_fingerprint} = \@pins;
     # Without a ca file the store of the system would be the other way in;
     # with this, only a pinned certificate passes.
-    $ssl{SSL_force_fingerprint} = 1 unless @{ $self->ca };
+    $ssl{SSL_force_fingerprint} = 1 unless defined $ca_file;
   }
   return \%ssl;
 }
@@ -307,6 +329,7 @@ sub anchors {
   my ( $self ) = @_;
   return join '; ',
     ( @{ $self->ca } ? 'ca '.join( ', ', @{ $self->ca } ) : () ),
+    ( @{ $self->roots } ? 'the roots of the run ('.scalar( @{ $self->roots } ).')' : () ),
     ( @{ $self->fingerprints }
       ? 'fingerprint '.join( ', ', map { $self->format_fingerprint($_) } @{ $self->fingerprints } )
       : () );
@@ -314,10 +337,11 @@ sub anchors {
 
 =method anchors
 
-    my $text = $client->anchors;    # 'ca /etc/sick/root.pem; fingerprint ab:cd:...'
+    my $text = $client->anchors;    # 'ca /etc/sick/pve-root-ca.pem; the roots of the run (1); fingerprint ab:cd:...'
 
-What the node is trusted by, for a message: the paths of the C<ca> files
-and the pinned fingerprints. All of it is public.
+What the node is trusted by, for a message: the paths of the C<ca> files,
+how many C<roots> there are, and the pinned fingerprints. All of it is
+public.
 
 =cut
 

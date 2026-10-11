@@ -1,4 +1,0 @@
-# The build context is the directory above the checkouts; only lib/ of this
-# distribution goes in.
-*
-!sick-target-proxmox/lib

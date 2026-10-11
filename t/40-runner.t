@@ -26,6 +26,7 @@ my $token  = token_file( $dir, $secret );
 my $pve  = standin( 've', $f, $dir, $secret, restart_delay => 1 );
 my $pbs  = standin( 'bs', $f, $dir, $secret );
 my $pbs2 = standin( 'bs', $f, $dir, $secret, reload_fails => 1 );
+my $pbs3 = standin( 'bs', $f, $dir, $secret );
 
 my $yaml = <<"YAML";
 ca:
@@ -63,6 +64,14 @@ devices:
     token_file: $token
     fingerprint: $f->{pbs_fresh}{fingerprint}
     ca: $dir/sick-ca/ca.crt
+  pbs3:
+    type: proxmox-bs
+    host: 127.0.0.1
+    port: @{[ $pbs3->port ]}
+    names: [127.0.0.1]
+    token_id: sick\@pbs!sick
+    token_file: $token
+    fingerprint: $f->{pbs_fresh}{fingerprint}
 YAML
 
 my $config = SICK::Config->load_string( $yaml, 'test list' );
@@ -116,5 +125,15 @@ is( $kept->{action}, 'failed', 'pbs2: the upload was answered 200, the port kept
 like( $kept->{error}, qr/\Averification failed: the device does not present the new certificate/, '  at the verification' );
 is( scalar $pbs2->uploads, 1, '  after one upload' );
 is( ( $pbs2->uploads )[0]{status}, 200, '  which was answered 200' );
+
+# pbs3 names only the pin of its fresh certificate, no ca: after the first
+# upload the pin is stale, and the second upload passes by the root the run
+# hands the target (SICK::Target/trust_roots).
+my ($pinned) = $runner->run( ['pbs3'] );
+is( $pinned->{action}, 'renewed', 'pbs3, pin only: first run renewed' ) or diag $pinned->{error};
+my ($by_root) = $runner->run( ['pbs3'], force => 1 );
+is( $by_root->{action}, 'renewed', 'pbs3, forced again: the stale pin misses, the root of the run lets the upload through' )
+  or diag $by_root->{error};
+is( scalar $pbs3->uploads, 2, '  two uploads' );
 
 done_testing;
