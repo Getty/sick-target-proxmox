@@ -1,0 +1,20 @@
+---
+claimed_at: 2026-10-11T06:11:42Z
+claimed_by: hub-main
+class: standard
+completed: 2026-10-11T06:11:42Z
+created: 2026-10-11T05:33:55Z
+id: 5
+priority: medium
+started: 2026-10-11T05:47:39Z
+status: done
+tags:
+- e2e
+- real-node
+title: Real PBS / PVE on agent-lab (time-boxed) and the HQ checklist
+updated: 2026-10-11T06:11:42Z
+---
+
+Try PBS as packages in a Debian container, PVE in a container or qemu without KVM, with a fixed time limit. What runs becomes an observation with version in docs/api-notes.md; what does not stays "not tried". Write the HQ checklist: what to do on a real PVE/PBS and what counts as passed.
+
+commit 5642077: PBS 4.2.8 and PVE 9.2.21 ran in containers (no systemd/cluster), observations in docs/api-notes.md, report docs/real-node-trial.md, HQ list docs/hq-checklist.md
