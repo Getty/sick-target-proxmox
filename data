@@ -1,0 +1,20 @@
+---
+claimed_at: 2026-10-11T07:07:40Z
+claimed_by: sick-worker-proxmox
+class: standard
+completed: 2026-10-11T07:07:40Z
+created: 2026-10-11T06:56:31Z
+id: 7
+priority: high
+started: 2026-10-11T06:56:42Z
+status: done
+tags:
+- core
+- api
+title: Use the core's trust_roots and default_port
+updated: 2026-10-11T07:07:40Z
+---
+
+The core (../sick, cards #65 and #66 there) now hands targets trust_roots (the issuer's root first, then the additional roots, one PEM each, in run and check) and lets a type name default_port; SICK::Device::has_port tells a written port from the default. Use trust_roots as an implicit anchor besides 'ca' (a fresh node still needs its cluster CA via 'ca' or a 'fingerprint' pin; never unverified), define default_port 8006/8007, drop the refusal of port 443 when written explicitly (NAT), keep the refusal of a missing port moot. Also: t/e2e/sick/Dockerfile layer is redundant now that sick:local carries the dist (../sick #62); remove it or reduce it, and fix the step-1 text naming only two checkouts. Update docs/decisions/0001 and 0003 with what changed.
+
+Done in b9e7284: trust_roots as implicit anchor (in the one SSL_ca_file), default_port 8006/8007, explicit 443 accepted, t/e2e/sick removed. prove -lr t 120 tests green (90-live skipped); t/e2e/device-proxmox.sh ALL PASSED (64 PASS) on first run.
