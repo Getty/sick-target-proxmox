@@ -25,6 +25,9 @@
       "kanban-issues-karr-ticket@karr",
       "sick-core@sick",
       "ssl-tls-pki@getty"
+    ],
+    "bundles": [
+      "getty-cpan-dist@getty"
     ]
   },
   "targets": [
