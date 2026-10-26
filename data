@@ -1,0 +1,49 @@
+{"action":"create","agent":"Torsten Raudssus","detail":"backlog","task_id":1,"ts":"2026-10-11T05:33:08Z"}
+{"action":"create","agent":"Torsten Raudssus","detail":"backlog","task_id":2,"ts":"2026-10-11T05:33:20Z"}
+{"action":"create","agent":"Torsten Raudssus","detail":"backlog","task_id":3,"ts":"2026-10-11T05:33:32Z"}
+{"action":"create","agent":"Torsten Raudssus","detail":"backlog","task_id":4,"ts":"2026-10-11T05:33:44Z"}
+{"action":"create","agent":"Torsten Raudssus","detail":"backlog","task_id":5,"ts":"2026-10-11T05:33:55Z"}
+{"action":"create","agent":"Torsten Raudssus","detail":"backlog","task_id":6,"ts":"2026-10-11T05:34:06Z"}
+{"action":"move","agent":"hub-main","detail":"review","task_id":1,"ts":"2026-10-11T05:47:05Z"}
+{"action":"move","agent":"hub-main","detail":"review","task_id":2,"ts":"2026-10-11T05:47:16Z"}
+{"action":"move","agent":"sick-worker-proxmox","detail":"in-progress","task_id":3,"ts":"2026-10-11T05:47:28Z"}
+{"action":"move","agent":"hub-main","detail":"in-progress","task_id":5,"ts":"2026-10-11T05:47:39Z"}
+{"action":"edit","agent":"hub-main","detail":"review","task_id":1,"ts":"2026-10-11T05:50:09Z"}
+{"action":"move","agent":"hub-main","detail":"done","task_id":1,"ts":"2026-10-11T05:50:21Z"}
+{"action":"edit","agent":"hub-main","detail":"review","task_id":2,"ts":"2026-10-11T05:50:32Z"}
+{"action":"move","agent":"hub-main","detail":"done","task_id":2,"ts":"2026-10-11T05:50:44Z"}
+{"action":"move","agent":"hub-main","detail":"in-progress","task_id":6,"ts":"2026-10-11T05:50:55Z"}
+{"action":"edit","agent":"hub-main","detail":"in-progress","task_id":6,"ts":"2026-10-11T05:51:06Z"}
+{"action":"move","agent":"hub-main","detail":"done","task_id":6,"ts":"2026-10-11T05:51:17Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":3,"ts":"2026-10-11T05:51:35Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":3,"ts":"2026-10-11T06:07:23Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":3,"ts":"2026-10-11T06:07:34Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":3,"ts":"2026-10-11T06:07:46Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":3,"ts":"2026-10-11T06:07:56Z"}
+{"action":"handoff","agent":"sick-worker-proxmox","detail":"review","task_id":3,"ts":"2026-10-11T06:08:07Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"review","task_id":3,"ts":"2026-10-11T06:11:08Z"}
+{"action":"move","agent":"sick-worker-proxmox","detail":"done","task_id":3,"ts":"2026-10-11T06:11:19Z"}
+{"action":"edit","agent":"hub-main","detail":"in-progress","task_id":5,"ts":"2026-10-11T06:11:31Z"}
+{"action":"move","agent":"hub-main","detail":"done","task_id":5,"ts":"2026-10-11T06:11:42Z"}
+{"action":"move","agent":"sick-worker-proxmox","detail":"in-progress","task_id":4,"ts":"2026-10-11T06:11:53Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":4,"ts":"2026-10-11T06:16:03Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":4,"ts":"2026-10-11T06:32:05Z"}
+{"action":"handoff","agent":"sick-worker-proxmox","detail":"review","task_id":4,"ts":"2026-10-11T06:32:16Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"review","task_id":4,"ts":"2026-10-11T06:36:43Z"}
+{"action":"move","agent":"sick-worker-proxmox","detail":"done","task_id":4,"ts":"2026-10-11T06:36:55Z"}
+{"action":"create","agent":"Torsten Raudssus","detail":"backlog","task_id":7,"ts":"2026-10-11T06:56:31Z"}
+{"action":"move","agent":"sick-worker-proxmox","detail":"in-progress","task_id":7,"ts":"2026-10-11T06:56:42Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":7,"ts":"2026-10-11T07:07:28Z"}
+{"action":"move","agent":"sick-worker-proxmox","detail":"done","task_id":7,"ts":"2026-10-11T07:07:40Z"}
+{"action":"create","agent":"Torsten Raudssus","detail":"backlog","task_id":8,"ts":"2026-10-11T08:21:09Z"}
+{"action":"create","agent":"Torsten Raudssus","detail":"backlog","task_id":9,"ts":"2026-10-11T08:48:04Z"}
+{"action":"edit","agent":"Torsten Raudssus","detail":"backlog","task_id":8,"ts":"2026-10-26T21:53:13Z"}
+{"action":"edit","agent":"Torsten Raudssus","detail":"backlog","task_id":8,"ts":"2026-10-26T21:56:57Z"}
+{"action":"move","agent":"sick-worker-proxmox","detail":"in-progress","task_id":9,"ts":"2026-10-26T22:27:51Z"}
+{"action":"move","agent":"sick-worker-proxmox","detail":"in-progress","task_id":8,"ts":"2026-10-26T22:28:02Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":9,"ts":"2026-10-26T22:36:01Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":8,"ts":"2026-10-26T22:36:12Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":9,"ts":"2026-10-26T22:39:31Z"}
+{"action":"move","agent":"sick-worker-proxmox","detail":"done","task_id":9,"ts":"2026-10-26T22:39:42Z"}
+{"action":"edit","agent":"sick-worker-proxmox","detail":"in-progress","task_id":8,"ts":"2026-10-26T22:39:53Z"}
+{"action":"move","agent":"sick-worker-proxmox","detail":"done","task_id":8,"ts":"2026-10-26T22:40:04Z"}
