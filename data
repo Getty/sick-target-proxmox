@@ -1,0 +1,27 @@
+---
+claimed_at: 2026-10-26T22:40:04Z
+claimed_by: sick-worker-proxmox
+class: standard
+completed: 2026-10-26T22:40:04Z
+created: 2026-10-11T08:21:09Z
+id: 8
+priority: high
+started: 2026-10-26T22:28:02Z
+status: done
+tags:
+- release
+- blocker
+title: 'Release blockers: require SICK 0.001; META repository from the SSH alias;
+  POD link api_message'
+updated: 2026-10-26T22:40:04Z
+---
+
+From the release audit 2026-10-11. (1) pin requires 'SICK', '0.001' once SICK is released. (2) origin is an SSH alias: META repository/bugtracker wrong, SUPPORT empty (cf. sick k74). (3) podchecker: unresolved internal link 'api_message' in lib/SICK/Target/Proxmox/Role.pm line 214. Non-blocking: t/90-live.t guard checks defined, not length, of SICK_PROXMOX_LIVE_CA; t/35-messages.t placeholder PRIVATE KEY header trips the secret grep; parent missing under on test; README/Changes point at ../sick; tarball ships t/e2e and agent config (prune).
+
+2026-10-26 21:53 2026-10-26: (1) done here — cpanfile pins SICK 0.001 ahead of CPAN (family is released together, sick-coordination); (2) origin is now git@github.com:Getty/sick-target-proxmox.git, check META again at the next audit; t/e2e and the agent config in the tarball are intended on the maintainer's word — no prune.
+
+2026-10-26 21:56 2026-10-26: (2) verified — dzil build writes repository and bugtracker on github.com/Getty/sick-target-proxmox. Left: (3) the POD link api_message.
+
+2026-10-26: (3) done - L</api_message> in Role.pm is C<api_message> now (the method is an =item there, no target for a link); podchecker no longer names api_message. podchecker on the raw source still lists the =method shortcut commands, which dzil expands. Tree not committed.
+
+All three points done; the last (POD link api_message) in 9e597d8
