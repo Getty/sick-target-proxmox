@@ -62,6 +62,17 @@ What a type requires on top. Nothing by default.
 
 around validate => sub {
   my ( $orig, $self, @args ) = @_;
+  return $self if eval { $self->_validate_all( $orig, @args ); 1 };
+  my $error = $@;
+  # Carp reports the generated wrapper of the method modifier as the place
+  # of the croak, '(eval N) line 1': that is no place for a person to look at.
+  die $error if ref $error;
+  $error =~ s/ at \(eval [0-9]+\) line [0-9]+\.?\n?\z/\n/;
+  die $error;
+};
+
+sub _validate_all {
+  my ( $self, $orig, @args ) = @_;
   $self->$orig(@args);
   my $device = $self->device;
   my $where  = $device->path;
@@ -92,7 +103,7 @@ around validate => sub {
       unless defined SICK::Target::Proxmox::Client->normalize_fingerprint($pin);
   }
   return $self;
-};
+}
 
 =method validate
 
@@ -211,7 +222,7 @@ uploaded, by its SHA-256 fingerprint.
 
 Croaks with C<< upload to <host>:<port> (node <node>) failed: <status>
 <reason> >>, followed by what of the answer may be quoted
-(L</api_message>); for a connection that did not come about, with the
+(C<api_message>); for a connection that did not come about, with the
 reason of the TLS library, and when the certificate of the node did not
 pass, with the SHA-256 fingerprint the node presents and the anchors that
 were tried. A message never holds the token, the key or the body.

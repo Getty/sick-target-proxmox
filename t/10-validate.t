@@ -46,6 +46,7 @@ sub refused {
   my $error = $@;
   ok( !$ok, $name ) or return;
   like( $error, $expect, '  with the reason' );
+  unlike( $error, qr/\n\n/, '  and ends in one newline at most' );
   return $error;
 }
 
@@ -69,6 +70,11 @@ for my $product (qw( ve bs )) {
     refused( $product, { ca => [] }, qr/\A\Q$path\E: 'ca' is an empty list/, 'an empty list of ca files is no anchor' );
     refused( $product, { ca => $dir.'/nope.pem' }, qr/\A\Q$path\E\.ca: cannot read ca file '\Q$dir\E\/nope\.pem': /,
       'a ca file that is not there' );
+    {
+      my $error = refused( $product, { ca => $dir.'/nope.pem' }, qr/No such file or directory\n\z/,
+        'a ca file that is not there: the reason of the system ends the message' );
+      unlike( $error, qr/\(eval \d+\)/, '  and no place of generated code' );
+    }
     refused( $product, { ca => $not_ca }, qr/\A\Q$path\E\.ca: ca file '\Q$not_ca\E' holds no PEM certificate/,
       'a ca file without a certificate' );
     refused( $product, { ca => { file => $ca } }, qr/'ca' must be a value or a list of values/, 'ca as a mapping' );

@@ -18,6 +18,9 @@ Revision history for SICK-Target-Proxmox
     - Key, certificate and leaf-first chain are checked before anything is
       sent; the answer must name the uploaded certificate; error messages
       never quote the token, the key or the body.
+    - A device that is refused says why in a message that ends with the
+      reason (a missing ca file: "No such file or directory"), not with the
+      generated code the check runs in.
     - Tests run against a Perl stand-in of both APIs, including checks that
       the token does not leak.
     - Both device types ran end to end through `sick run` against a real
