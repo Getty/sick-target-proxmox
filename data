@@ -1,0 +1,21 @@
+---
+claimed_at: 2026-10-26T22:39:42Z
+claimed_by: sick-worker-proxmox
+class: standard
+completed: 2026-10-26T22:39:42Z
+created: 2026-10-11T08:48:04Z
+id: 9
+priority: low
+started: 2026-10-26T22:27:51Z
+status: done
+tags:
+- finding
+title: Error message for a missing ca file ends in 'at (eval N) line 1.
+updated: 2026-10-26T22:39:42Z
+---
+
+Seen 2026-10-11 by a worker in ../sick: when the ca file of a device is missing, the message ends in 'at (eval 288) line 1.' Croak with path and the system's reason, no eval location.
+
+2026-10-26: cause here, not in ../sick: validate in Role.pm is an 'around' modifier; Carp names the generated wrapper '(eval N) line 1' as the place of every croak in it. Fix: the wrapper rethrows without that position (Role.pm, _validate_all). Regression test in t/10-validate.t (fails without the fix, green with). Nothing for ../sick. Tree not committed.
+
+Committed in 9e597d8
