@@ -7,7 +7,7 @@ requires 'JSON::MaybeXS';
 requires 'Moo';
 requires 'namespace::autoclean', '0.16';
 requires 'Path::Tiny';
-requires 'SICK';
+requires 'SICK', '0.001';
 requires 'Type::Tiny';
 
 on test => sub {

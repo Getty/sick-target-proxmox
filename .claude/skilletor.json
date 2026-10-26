@@ -24,7 +24,11 @@
       "kanban-issues-karr-coordination@karr",
       "kanban-issues-karr-ticket@karr",
       "sick-core@sick",
-      "ssl-tls-pki@getty"
+      "ssl-tls-pki@getty",
+      "sick-coordination@sick"
+    ],
+    "agents": [
+      "karr-coordinator@sick"
     ],
     "bundles": [
       "getty-cpan-dist@getty"
