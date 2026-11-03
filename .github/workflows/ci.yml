@@ -26,4 +26,20 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: perl -V
         run: perl -V
+      # SICK is built from the sibling repository's HEAD, so CI runs
+      # against the same state as the local fleet.
+      - name: Checkout SICK
+        uses: actions/checkout@v4
+        with:
+          repository: Getty/sick
+          path: vendor/sick
+      - name: Install SICK from the sibling repository
+        working-directory: vendor/sick
+        shell: bash
+        run: |
+          set -euo pipefail
+          cpanm -nq Dist::Zilla
+          dzil authordeps --missing | cpanm -nq
+          dzil listdeps --author --missing | cpanm -nq
+          dzil install
       - uses: Getty/p5-dist-zilla-pluginbundle-author-getty/.github/actions/dzil-test@v1
