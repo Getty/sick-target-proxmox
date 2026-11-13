@@ -19,7 +19,7 @@ the hazards before the first change — what travels to a node is a token and a 
 ## Delegation
 
 Delegate behavior-relevant code to the right agent instead of touching it yourself —
-principle in the shared rule `getty-agent-delegation` (skilletor bundle
+principle in the shared rule `agent-delegation` (skilletor bundle
 `getty-cpan-dist@getty`), lanes in `.claude/rules/sick-proxmox-rules.md`.
 
 | Task | Agent |
